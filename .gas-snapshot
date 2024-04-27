@@ -1,0 +1,5 @@
+RSASignerTest:test_GivenTheImplementation() (gas: 969422)
+RSASignerTest:test_WhenItIsNotInitialized((bytes,bytes)) (runs: 259, μ: 1165444, ~: 1141536)
+RSASignerTest:test_WhenTheSignatureIsFromAnotherOwner(bytes) (runs: 259, μ: 407411, ~: 407200)
+RSASignerTest:test_WhenTheSignatureIsNotValid(bytes,bytes) (runs: 259, μ: 362450, ~: 362416)
+RSASignerTest:test_WhenTheSignatureIsValid(bytes) (runs: 259, μ: 427331, ~: 427120)

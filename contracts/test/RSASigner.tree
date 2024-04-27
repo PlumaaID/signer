@@ -1,0 +1,18 @@
+RSASignerTest
+├── given the implementation
+│   └── it should have initializers disabled
+│       └── because is dangerous to leave the implementation uninitialized
+├── when initializing
+│   └── when it is not initialized
+│       └── it sets the RSA public key owner
+│            └── because it is just initialized 
+└── when calling isValidSignature
+    ├── when the signature is not valid
+    │   └── it returns `bytes4(0)`
+    │        └── because the signature is invalid
+    ├── when the signature is from another owner
+    │   └── it returns `bytes4(0)`
+    │        └── because the owner did not sign
+    └── when the signature is valid
+        └── it returns `isValidSignature.selector`
+            └── because the owner signed

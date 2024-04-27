@@ -1,0 +1,24 @@
+[profile.default]
+src = "contracts/src"
+test = "contracts/test"
+scripts = "contracts/script"
+out = "out"
+libs = ["node_modules", "lib"]
+via_ir = true
+optimizer = true
+optimizer_runs = 10_000_000
+ffi = true
+
+[profile.ci]
+fuzz = { runs = 5_000 }
+verbosity = 4
+
+[etherscan]
+arbitrum = { key = "${API_KEY_ARBISCAN}" }
+arbitrum_sepolia = { key = "${API_KEY_ARBISCAN}" }
+
+[rpc_endpoints]
+arbitrum = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"
+arbitrum_sepolia = "https://arbitrum-sepolia.infura.io/v3/${API_KEY_INFURA}"
+
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
