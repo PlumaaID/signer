@@ -2,7 +2,7 @@ name: test
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request: {}
 
 jobs:
@@ -14,4 +14,6 @@ jobs:
         uses: ./.github/actions/setup
       - run: npm run test:coverage -- --forbid-only
       - run: npm run lint
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
