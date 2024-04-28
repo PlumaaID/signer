@@ -7,15 +7,10 @@ import {
   TypedDataDefinition,
   TypedData,
   concat,
-  getContract,
   Client,
 } from "viem";
-import { with0x, without0x } from "./utils";
+import { getRSASignerFactory, with0x, without0x, factory } from "./utils";
 import { TypedDataDomain, TypedDataEncoder, TypedDataField } from "ethers";
-import RSASignerFactoryABI from "./abi/RSASignerFactory";
-
-// Universal RSASigner factory contract address
-const factory = "0x0884D00bC0a7f86632b80bccFa43ec872a9961D3";
 
 /**
  * @class RSASHA256Signer
@@ -32,11 +27,7 @@ class RSASHA256Signer implements SmartAccountSigner {
     keypair: pki.rsa.KeyPair,
     viemClient: TClient
   ): Promise<RSASHA256Signer> {
-    const contract = getContract({
-      address: factory,
-      abi: RSASignerFactoryABI,
-      client: viemClient,
-    });
+    const contract = getRSASignerFactory(viemClient);
     const address = await contract.read.predictDeterministicAddress([
       {
         exponent: with0x(keypair.privateKey.e.toString(16)),
