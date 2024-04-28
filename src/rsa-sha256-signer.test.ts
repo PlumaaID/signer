@@ -3,15 +3,77 @@ import { testProp, fc } from "@fast-check/ava";
 import { md, pki, util } from "node-forge";
 import { RSASHA256Signer } from "./";
 import { TypedDataEncoder } from "ethers";
+import sinon from "sinon";
+import * as utils from "./utils";
+import { Client } from "viem";
 
 const RSAEOA = fc.gen().map(() => {
   const owner = pki.rsa.generateKeyPair(2048);
-  return { signer: new RSASHA256Signer(owner), owner };
+  return {
+    signer: new RSASHA256Signer(
+      owner,
+      "0x0000000000000000000000000000000000000000"
+    ),
+    owner,
+  };
 });
 
-testProp('#address is "0x"', [RSAEOA], (t, { signer }) => {
-  t.is(signer.address, "0x0000000000000000000000000000000000000000");
+const addressArbitrary = fc.hexaString({
+  minLength: 40,
+  maxLength: 40,
 });
+
+const getRSASignerFactoryMock = sinon.mock(utils);
+
+testProp(
+  "#from creates a signer with an address from the universal factory",
+  [addressArbitrary],
+  async (t, add) => {
+    const addressWith0x = with0x(add);
+    const predictDeterministicAddressStub = sinon
+      .stub()
+      .resolves(addressWith0x);
+    const clientStub = sinon.stub();
+    const RSASignerFactoryMockExpectation = getRSASignerFactoryMock
+      .expects("getRSASignerFactory")
+      .once()
+      .withArgs(clientStub)
+      .returns({
+        read: {
+          predictDeterministicAddress: predictDeterministicAddressStub,
+        },
+      });
+    const signer = await RSASHA256Signer.from(
+      pki.rsa.generateKeyPair(2048),
+      clientStub as unknown as Client
+    );
+    t.is(signer.address, addressWith0x);
+    t.true(
+      predictDeterministicAddressStub.calledOnceWith([
+        {
+          exponent: with0x(signer.rsaPublicKey.e.toString(16)),
+          modulus: with0x(signer.rsaPublicKey.n.toString(16)),
+        },
+        utils.factory,
+      ])
+    );
+    t.true(RSASignerFactoryMockExpectation.calledOnce);
+    const [client] = RSASignerFactoryMockExpectation.firstCall.args;
+    t.is(client, clientStub);
+  }
+);
+
+testProp(
+  "#address is set at construction",
+  [addressArbitrary],
+  (t, address) => {
+    const signer = new RSASHA256Signer(
+      pki.rsa.generateKeyPair(2048),
+      with0x(address)
+    );
+    t.is(signer.address, with0x(address));
+  }
+);
 
 testProp(
   '#publicKey is the concatenation of "e" and "n"',
@@ -107,10 +169,7 @@ testProp(
       chainId: fc.integer({
         min: 1,
       }),
-      verifyingContract: fc.hexaString({
-        minLength: 40,
-        maxLength: 40,
-      }),
+      verifyingContract: addressArbitrary,
     }),
     fc.record({
       name: fc.constant("Example"),
@@ -121,10 +180,7 @@ testProp(
       chainId: fc.integer({
         min: 1,
       }),
-      verifyingContract: fc.hexaString({
-        minLength: 40,
-        maxLength: 40,
-      }),
+      verifyingContract: addressArbitrary,
     }),
   ],
   async (t, { signer, owner }, d, m) => {
