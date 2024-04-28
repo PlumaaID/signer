@@ -8,6 +8,9 @@ import {RSASigner} from "./RSASigner.sol";
 contract RSASignerFactory {
     RSASigner private immutable _RSASignerImplementation;
 
+    /// @notice Emitted when a new RSASigner clone is created.
+    event RSASignerCreated(RSASigner.PublicKey indexed owner, address signer);
+
     constructor() {
         _RSASignerImplementation = new RSASigner();
     }
@@ -34,6 +37,7 @@ contract RSASignerFactory {
             _salt(owner)
         );
         RSASigner(clone).initialize(owner);
+        emit RSASignerCreated(owner, clone);
         return clone;
     }
 

@@ -7,9 +7,15 @@ import {
   TypedDataDefinition,
   TypedData,
   concat,
+  getContract,
+  Client,
 } from "viem";
 import { with0x, without0x } from "./utils";
 import { TypedDataDomain, TypedDataEncoder, TypedDataField } from "ethers";
+import RSASignerFactoryABI from "./abi/RSASignerFactory";
+
+// Universal RSASigner factory contract address
+const factory = "0x0884D00bC0a7f86632b80bccFa43ec872a9961D3";
 
 /**
  * @class RSASHA256Signer
@@ -17,13 +23,29 @@ import { TypedDataDomain, TypedDataEncoder, TypedDataField } from "ethers";
  * @description A smart account signer that uses RSA keys with SHA256 hashing algorithm.
  */
 class RSASHA256Signer implements SmartAccountSigner {
-  constructor(private readonly keypair: pki.rsa.KeyPair) {}
+  constructor(
+    private readonly keypair: pki.rsa.KeyPair,
+    public address: SmartAccountSigner["address"]
+  ) {}
 
-  /**
-   * @todo An address can be assigned deterministically if there's a CREATE2 deployer that sets the public key on-chain.
-   */
-  get address(): SmartAccountSigner["address"] {
-    return "0x0000000000000000000000000000000000000000";
+  static async from<TClient extends Client>(
+    keypair: pki.rsa.KeyPair,
+    viemClient: TClient
+  ): Promise<RSASHA256Signer> {
+    const contract = getContract({
+      address: factory,
+      abi: RSASignerFactoryABI,
+      client: viemClient,
+    });
+    const address = await contract.read.predictDeterministicAddress([
+      {
+        exponent: with0x(keypair.privateKey.e.toString(16)),
+        modulus: with0x(keypair.privateKey.n.toString(16)),
+      },
+      factory,
+    ]);
+    const signer = new RSASHA256Signer(keypair, address);
+    return signer;
   }
 
   /**

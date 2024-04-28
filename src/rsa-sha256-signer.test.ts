@@ -6,7 +6,13 @@ import { TypedDataEncoder } from "ethers";
 
 const RSAEOA = fc.gen().map(() => {
   const owner = pki.rsa.generateKeyPair(2048);
-  return { signer: new RSASHA256Signer(owner), owner };
+  return {
+    signer: new RSASHA256Signer(
+      owner,
+      "0x0000000000000000000000000000000000000000"
+    ),
+    owner,
+  };
 });
 
 testProp('#address is "0x"', [RSAEOA], (t, { signer }) => {
