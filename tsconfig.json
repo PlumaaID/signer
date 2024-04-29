@@ -4,8 +4,13 @@
     "module": "commonjs",
     "outDir": "./dist",
     "esModuleInterop": true,
+    "declaration": true,
+    "declarationMap": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
+    "moduleResolution": "node",
     "skipLibCheck": true
-  } 
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "lib"]
 }

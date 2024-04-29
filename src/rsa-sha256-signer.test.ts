@@ -2,10 +2,9 @@ import { with0x, without0x } from "./utils";
 import { testProp, fc } from "@fast-check/ava";
 import { md, pki, util } from "node-forge";
 import { RSASHA256Signer } from "./";
-import { TypedDataEncoder } from "ethers";
 import sinon from "sinon";
 import * as utils from "./utils";
-import { Client } from "viem";
+import { Client, hashMessage, hashTypedData, slice, toHex } from "viem";
 
 const RSAEOA = fc.gen().map(() => {
   const owner = pki.rsa.generateKeyPair(2048);
@@ -109,15 +108,27 @@ testProp(
   [RSAEOA, fc.string()],
   async (t, { signer, owner }, message) => {
     const signature = await signer.signMessage({ message });
-    const digest = md.sha256.create().update(message, "utf8").digest().bytes();
-    t.assert(
-      owner.publicKey.verify(digest, util.hexToBytes(without0x(signature)))
+
+    const keccak256Digest = util.hexToBytes(
+      without0x(hashMessage(toHex(message)))
     );
+    const digest = md.sha256
+      .create()
+      .update(keccak256Digest, "raw")
+      .digest()
+      .bytes();
+
+    const signatureBytesLength = util.hexToBytes(without0x(signature)).length;
+    const pkcs1Sha256Signature = util.hexToBytes(
+      without0x(slice(signature, 0, signatureBytesLength - 1))
+    );
+
+    t.assert(owner.publicKey.verify(digest, pkcs1Sha256Signature));
   }
 );
 
 testProp(
-  "#signMessage signs arbitrary raw hex messages",
+  "#signMessage signs arbitrary raw string messages",
   [RSAEOA, fc.hexaString()],
   async (t, { signer, owner }, raw) => {
     const signature = await signer.signMessage({
@@ -125,14 +136,22 @@ testProp(
         raw: with0x(raw),
       },
     });
+
+    const keccak256Digest = util.hexToBytes(
+      without0x(hashMessage(with0x(raw)))
+    );
     const digest = md.sha256
       .create()
-      .update(util.hexToBytes(without0x(raw)), "raw")
+      .update(keccak256Digest, "raw")
       .digest()
       .bytes();
-    t.assert(
-      owner.publicKey.verify(digest, util.hexToBytes(without0x(signature)))
+
+    const signatureBytesLength = util.hexToBytes(without0x(signature)).length;
+    const pkcs1Sha256Signature = util.hexToBytes(
+      without0x(slice(signature, 0, signatureBytesLength - 1))
     );
+
+    t.assert(owner.publicKey.verify(digest, pkcs1Sha256Signature));
   }
 );
 
@@ -145,14 +164,20 @@ testProp(
         raw,
       },
     });
+
+    const keccak256Digest = util.hexToBytes(without0x(hashMessage(toHex(raw))));
     const digest = md.sha256
       .create()
-      .update(util.createBuffer(raw).bytes(), "raw")
+      .update(keccak256Digest, "raw")
       .digest()
       .bytes();
-    t.assert(
-      owner.publicKey.verify(digest, util.hexToBytes(without0x(signature)))
+
+    const signatureBytesLength = util.hexToBytes(without0x(signature)).length;
+    const pkcs1Sha256Signature = util.hexToBytes(
+      without0x(slice(signature, 0, signatureBytesLength - 1))
     );
+
+    t.assert(owner.publicKey.verify(digest, pkcs1Sha256Signature));
   }
 );
 
@@ -209,18 +234,28 @@ testProp(
       primaryType: "Example",
     });
 
-    const digest = md.sha256.create();
-    digest.update(
-      util.hexToBytes(
-        without0x(TypedDataEncoder.encode(domain, types, message))
-      ),
-      "raw"
-    );
-    t.assert(
-      owner.publicKey.verify(
-        digest.digest().bytes(),
-        util.hexToBytes(without0x(signature))
+    const keccak256Digest = util.hexToBytes(
+      without0x(
+        hashTypedData({
+          domain,
+          types,
+          message,
+          primaryType: "Example",
+        })
       )
     );
+
+    const digest = md.sha256
+      .create()
+      .update(keccak256Digest, "raw")
+      .digest()
+      .bytes();
+
+    const signatureBytesLength = util.hexToBytes(without0x(signature)).length;
+    const pkcs1Sha256Signature = util.hexToBytes(
+      without0x(slice(signature, 0, signatureBytesLength - 1))
+    );
+
+    t.assert(owner.publicKey.verify(digest, pkcs1Sha256Signature));
   }
 );

@@ -7,10 +7,12 @@ import {RSA} from "./unreleased/RSA.sol";
 
 /// @title Plumaa - An RSA SHA256 PKCS1.5 enabler contract.
 ///
-/// It allows an RSA public key to have an Ethereum address and sign operations. Useful for setting
-/// this contract as the owner of a multisig, among other things.
-///
+/// It allows an RSA public key to have an Ethereum address and sign operations.
 /// A notable example of RSA signatures in real-world applications are the government-issued digital certificates.
+/// Useful for setting this contract as the owner of a multisig, among other things.
+///
+/// NOTE: This contract uses a custom signature format with a suffix flag for normalization of keccak256 digests.
+/// See `isValidSignature`.
 contract RSASigner is Initializable, IERC1271 {
     using RSA for bytes32;
 
@@ -44,27 +46,51 @@ contract RSASigner is Initializable, IERC1271 {
     }
 
     /// @notice Checks if the provided signature is valid for the sha256 hash.
+    ///
+    /// Given the popularity of keccak256 in EVM contracts, most calls to this function will send a keccak256 digest.
+    /// A custom signature format is used to allow for normalizing the digest before verifying it.
+    /// Normalizing the digest means that it's hashed again with sha256 so it's compatible with RSA PKCS1.5 validation.
+    /// Off-chain signers are not adapted for non-standard digests, so they can be adapted by passing the
+    /// keccak256 as the message to sign.
+    ///
+    /// The custom format is `SSSSSSSSS...SSSSSSSSSSSSSN`, where:
+    ///
+    /// - `S` is the PKCS1.5 SHA256 signature (0x01 - 0x..)
+    /// - `N` is the normalization boolean byte (0x00) (if true, the digest is hashed again with sha256)
+    ///
+    /// The setup is cryptographically secure assuming both keccak256 and sha256 are secure cryptographic hashing functions,
+    /// which is a reasonable assumption given their trust in the Ethereum community for keccak256 and the
+    /// standardization of sha256 in government certificates.
     function isValidSignature(
-        bytes32 sha256Digest,
+        bytes32 digest,
         bytes memory signature
     ) external view returns (bytes4) {
         return
-            _verifyRSAOwner(sha256Digest, signature)
+            _verifyRSAOwner(digest, signature)
                 ? this.isValidSignature.selector
                 : bytes4(0);
     }
 
     /// @notice Returns true if the provided signature is valid for the digest and owner's public key
-    /// @param sha256Digest The digest to verify
-    /// @param signature The signature to verify
+    /// @param digest The digest to verify
+    /// @param signature Normalization suffixed PKCS1.5 SHA256 signature
     function _verifyRSAOwner(
-        bytes32 sha256Digest,
+        bytes32 digest,
         bytes memory signature
     ) internal view returns (bool) {
         PublicKey memory pubKey = publicKey();
+
+        (bool normalize, bytes memory pkcs1Sha256Signature) = _splitSignature(
+            signature
+        );
+
+        if (normalize) {
+            digest = sha256(abi.encode(digest));
+        }
+
         return
-            sha256Digest.pkcs1Sha256(
-                signature,
+            digest.pkcs1Sha256(
+                pkcs1Sha256Signature,
                 pubKey.exponent,
                 pubKey.modulus
             );
@@ -78,6 +104,21 @@ contract RSASigner is Initializable, IERC1271 {
     {
         assembly ("memory-safe") {
             $.slot := RSA_SIGNER_STORAGE_LOCATION
+        }
+    }
+
+    function _splitSignature(
+        bytes memory signature
+    ) private pure returns (bool normalize, bytes memory pkcs1Sha256Signature) {
+        assembly ("memory-safe") {
+            // Cache length
+            let length := mload(signature)
+            // Equivalent to: normalize := signature[length - 1]
+            normalize := mload(add(signature, sub(add(0x20, length), 1)))
+            // Adjust length to exclude the normalization flag
+            mstore(signature, sub(length, 1))
+            // Point the pkcs1Sha256Signature to the start of the signature with adjusted length
+            pkcs1Sha256Signature := signature
         }
     }
 }
