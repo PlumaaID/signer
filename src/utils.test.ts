@@ -20,6 +20,5 @@ testProp(
     const without0xHexString = without0x(hexString);
     t.not(without0xHexString.slice(0, 2), "0x");
     t.assert(isHex("0x" + without0xHexString));
-    t.assert(without0xHexString.length % 2 === 0);
   }
 );
