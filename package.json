@@ -16,12 +16,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/PlumaaID/plumaa-signer.git"
+    "url": "git+https://github.com/PlumaaID/signer.git"
   },
   "author": "Ernesto García <ernesto@plumaa.io>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/PlumaaID/plumaa-signer/issues"
+    "url": "https://github.com/PlumaaID/signer/issues"
   },
   "homepage": "https://www.npmjs.com/package/@plumaa/signer",
   "devDependencies": {
