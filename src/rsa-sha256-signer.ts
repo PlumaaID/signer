@@ -92,12 +92,13 @@ class RSASHA256Signer implements SmartAccountSigner {
       .create()
       .update(util.hexToBytes(without0x(keccak256Digest)), "raw");
     const signature = this.keypair.privateKey.sign(digest);
+    // The format follows the normalization model of the RSASigner.sol contract
     return concat([with0x(util.bytesToHex(signature)), "0x01"]);
   }
 }
 
 /**
- * @dev WIP
+ * @dev Adapter of RSASHA256Signer to support signing messages encoded in the format of a Safe{Wallet}.
  */
 class RSASHA256SafeSigner extends RSASHA256Signer {
   static async from<TClient extends Client>(
