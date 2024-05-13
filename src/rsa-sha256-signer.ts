@@ -8,9 +8,17 @@ import {
   TypedData,
   concat,
   Client,
+  toHex,
+  hashTypedData,
+  hashMessage,
+  isHex,
 } from "viem";
-import { getRSASignerFactory, with0x, without0x, factory } from "./utils";
-import { TypedDataDomain, TypedDataEncoder, TypedDataField } from "ethers";
+
+import { getRSASignerFactory, with0x, factory, without0x } from "./utils";
+import {
+  EthSafeSignature,
+  buildSignatureBytes,
+} from "@safe-global/protocol-kit";
 
 /**
  * @class RSASHA256Signer
@@ -18,9 +26,12 @@ import { TypedDataDomain, TypedDataEncoder, TypedDataField } from "ethers";
  * @description A smart account signer that uses RSA keys with SHA256 hashing algorithm.
  */
 class RSASHA256Signer implements SmartAccountSigner {
+  public readonly source: SmartAccountSigner["source"] = "custom";
+  public readonly type: SmartAccountSigner["type"] = "local";
+
   constructor(
     private readonly keypair: pki.rsa.KeyPair,
-    public address: SmartAccountSigner["address"]
+    public readonly address: SmartAccountSigner["address"]
   ) {}
 
   static async from<TClient extends Client>(
@@ -53,50 +64,93 @@ class RSASHA256Signer implements SmartAccountSigner {
     return this.keypair.publicKey;
   }
 
-  get source(): SmartAccountSigner["source"] {
-    return "custom";
-  }
+  signMessage = async ({
+    message,
+  }: {
+    message: SignableMessage;
+  }): Promise<Hex> => {
+    const raw =
+      typeof message === "string"
+        ? toHex(message)
+        : isHex(message.raw)
+        ? message.raw
+        : toHex(message.raw);
+    return this.sign(hashMessage(raw));
+  };
 
-  get type(): SmartAccountSigner["type"] {
-    return "local";
-  }
-
-  async signMessage({ message }: { message: SignableMessage }): Promise<Hex> {
-    const digest = md.sha256.create();
-
-    if (typeof message === "string") {
-      digest.update(message, "utf8");
-    } else if ("raw" in message) {
-      if (typeof message.raw === "string") {
-        digest.update(util.hexToBytes(without0x(message.raw)), "raw");
-      } else {
-        digest.update(util.createBuffer(message.raw).bytes(), "raw");
-      }
-    }
-
-    const signature = this.keypair.privateKey.sign(digest);
-    return with0x(util.bytesToHex(signature));
-  }
-
-  async signTypedData<
+  signTypedData = async <
     typedData extends TypedData | Record<string, unknown>,
     primaryType extends keyof typedData | "EIP712Domain" = keyof typedData
   >(
     typedDataDefinition: TypedDataDefinition<typedData, primaryType>
-  ): Promise<Hash> {
-    const encodedTypedData = TypedDataEncoder.encode(
-      typedDataDefinition.domain as TypedDataDomain,
-      typedDataDefinition.types as Record<string, TypedDataField[]>,
-      typedDataDefinition.message as TypedData
-    );
+  ): Promise<Hash> => {
+    return this.sign(hashTypedData(typedDataDefinition));
+  };
 
+  protected async sign(keccak256Digest: Hash): Promise<Hex> {
     const digest = md.sha256
       .create()
-      .update(util.hexToBytes(without0x(encodedTypedData)), "raw");
-
+      .update(util.hexToBytes(without0x(keccak256Digest)), "raw");
     const signature = this.keypair.privateKey.sign(digest);
-    return with0x(util.bytesToHex(signature));
+    // The format follows the normalization model of the RSASigner.sol contract
+    return concat([with0x(util.bytesToHex(signature)), "0x01"]);
   }
 }
 
-export { RSASHA256Signer };
+/**
+ * @dev Adapter of RSASHA256Signer to support signing messages encoded in the format of a Safe{Wallet}.
+ */
+class RSASHA256SafeSigner extends RSASHA256Signer {
+  static async from<TClient extends Client>(
+    keypair: pki.rsa.KeyPair,
+    viemClient: TClient
+  ): Promise<RSASHA256Signer> {
+    const contract = getRSASignerFactory(viemClient);
+    const address = await contract.read.predictDeterministicAddress([
+      {
+        exponent: with0x(keypair.privateKey.e.toString(16)),
+        modulus: with0x(keypair.privateKey.n.toString(16)),
+      },
+      factory,
+    ]);
+    const signer = new RSASHA256SafeSigner(keypair, address);
+    return signer;
+  }
+
+  signMessage = async ({
+    message,
+  }: {
+    message: SignableMessage;
+  }): Promise<Hex> => {
+    const raw =
+      typeof message === "string"
+        ? toHex(message)
+        : isHex(message.raw)
+        ? message.raw
+        : toHex(message.raw);
+
+    return this.toSafeEthSignature(await this.sign(hashMessage(raw)));
+  };
+
+  signTypedData = async <
+    typedData extends TypedData | Record<string, unknown>,
+    primaryType extends keyof typedData | "EIP712Domain" = keyof typedData
+  >(
+    typedDataDefinition: TypedDataDefinition<typedData, primaryType>
+  ): Promise<Hex> => {
+    const signature = await this.sign(hashTypedData(typedDataDefinition));
+
+    return this.toSafeEthSignature(signature);
+  };
+
+  private async toSafeEthSignature(signature: Hex): Promise<Hex> {
+    const ethSafeSignature = new EthSafeSignature(
+      this.address,
+      signature,
+      true
+    );
+    return with0x(buildSignatureBytes([ethSafeSignature]));
+  }
+}
+
+export { RSASHA256Signer, RSASHA256SafeSigner };

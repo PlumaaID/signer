@@ -1,4 +1,4 @@
-import { isHexString } from "ethers";
+import { isHex } from "viem";
 import { with0x, without0x } from "./utils";
 import { testProp, fc } from "@fast-check/ava";
 
@@ -8,7 +8,8 @@ testProp(
   (t, hexString) => {
     const with0xHexString = with0x(hexString);
     t.is(with0xHexString.slice(0, 2), "0x");
-    t.assert(isHexString(with0xHexString));
+    t.assert(isHex(with0xHexString));
+    t.assert(with0xHexString.length % 2 === 0);
   }
 );
 
@@ -18,6 +19,6 @@ testProp(
   (t, hexString) => {
     const without0xHexString = without0x(hexString);
     t.not(without0xHexString.slice(0, 2), "0x");
-    t.assert(isHexString("0x" + without0xHexString));
+    t.assert(isHex("0x" + without0xHexString));
   }
 );

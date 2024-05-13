@@ -2,17 +2,27 @@ RSASignerTest
 ├── given the implementation
 │   └── it should have initializers disabled
 │       └── because is dangerous to leave the implementation uninitialized
-├── when initializing
-│   └── when it is not initialized
+├── when creating with the factory
+│   └── given a new RSA signer created
 │       └── it sets the RSA public key owner
 │            └── because it is just initialized 
-└── when calling isValidSignature
-    ├── when the signature is not valid
+├── when validating a sha256 digested message with isValidSignature
+│   ├── given an invalid sha256 signature
+│   │   └── it returns `bytes4(0)`
+│   │        └── because the sha256 digest signature is invalid
+│   ├── given a sha256 digest and a signature of another public key
+│   │   └── it returns `bytes4(0)`
+│   │        └── because the owner did not sign the sha256 digest
+│   └── given a sha256 digest and a signature of the owner
+│       └── it returns `isValidSignature.selector`
+│           └── because the owner signed the sha256 digest
+└── when validating a normalized keccak256 digested message with isValidSignature
+    ├── given an invalid normalized keccak256 signature
     │   └── it returns `bytes4(0)`
-    │        └── because the signature is invalid
-    ├── when the signature is from another owner
+    │        └── because the normalized keccak256 digest signature invalid
+    ├── given a normalized keccak256 digest and a signature of another public key
     │   └── it returns `bytes4(0)`
-    │        └── because the owner did not sign
-    └── when the signature is valid
+    │        └── because the owner did not sign the normalized keccak256 digest
+    └── given a normalized keccak256 digest and a signature of the owner
         └── it returns `isValidSignature.selector`
-            └── because the owner signed
+            └── because the owner signed the normalized keccak256 digest
