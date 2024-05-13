@@ -8,6 +8,8 @@ import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.s
 contract RSASignerTest is BaseTest {
     RSASignerMock signer;
 
+    bytes4 internal constant EIP1271_MAGIC_VALUE = 0x20c13b0b;
+
     /// @notice it should have initializers disabled because is dangerous to leave the implementation uninitialized
     function test_GivenTheImplementation() external {
         RSASignerMock implementation = new RSASignerMock();
@@ -82,7 +84,7 @@ contract RSASignerTest is BaseTest {
             sha256Digest,
             _suffixed(pcks1Sha256Signature, false)
         );
-        assertEq(result, signer.isValidSignature.selector);
+        assertEq(result, EIP1271_MAGIC_VALUE);
     }
 
     bytes32 keccak256Digest;
@@ -145,7 +147,7 @@ contract RSASignerTest is BaseTest {
             keccak256Digest,
             _suffixed(pcks1Sha256Signature, true)
         );
-        assertEq(result, signer.isValidSignature.selector);
+        assertEq(result, EIP1271_MAGIC_VALUE);
     }
 
     function _suffixed(

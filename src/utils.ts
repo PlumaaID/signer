@@ -14,7 +14,7 @@ function without0x(str: string): string {
 }
 
 // Universal RSASigner factory contract address
-export const factory: Address = "0x9E80C66dA41c04e6125266CfD52D1F2b6AfC547d";
+export const factory: Address = "0xd6dA52A1Ad12618c7228920003EAF39f37F5d693";
 
 function getRSASignerFactory<TClient extends Client>(client: TClient) {
   return getContract({

@@ -16,6 +16,9 @@ import {RSA} from "./unreleased/RSA.sol";
 contract RSASigner is Initializable, IERC1271 {
     using RSA for bytes32;
 
+    // bytes4(keccak256("isValidSignature(bytes,bytes)")
+    bytes4 internal constant EIP1271_MAGIC_VALUE = 0x20c13b0b;
+
     struct PublicKey {
         bytes exponent;
         bytes modulus;
@@ -67,8 +70,19 @@ contract RSASigner is Initializable, IERC1271 {
     ) external view returns (bytes4) {
         return
             _verifyRSAOwner(digest, signature)
-                ? this.isValidSignature.selector
+                ? EIP1271_MAGIC_VALUE
                 : bytes4(0);
+    }
+
+    /**
+     * @notice Legacy EIP1271 method to validate a signature.
+     * Assumes signature corresponds to the keccak256 digest of the data.
+     */
+    function isValidSignature(
+        bytes memory _data,
+        bytes memory _signature
+    ) public view virtual returns (bytes4) {
+        return this.isValidSignature(keccak256(_data), _signature);
     }
 
     /// @notice Returns true if the provided signature is valid for the digest and owner's public key
