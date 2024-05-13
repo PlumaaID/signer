@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "RSA signature and verification utilities for signing Ethereum operations with an RSA keypair",
   "main": "dist/index.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "prepare": "npm run compile",
     "compile": "tsc",
