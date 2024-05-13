@@ -81,7 +81,7 @@ testProp(
     const publicKey = owner.publicKey;
     t.is(
       without0x(signer.publicKey),
-      without0x(publicKey.e.toString(16) + publicKey.n.toString(16))
+      without0x(with0x(publicKey.e.toString(16) + publicKey.n.toString(16)))
     );
   }
 );
