@@ -18,7 +18,7 @@ import { getRSASignerFactory, with0x, factory, without0x } from "./utils";
 import {
   EthSafeSignature,
   buildSignatureBytes,
-} from "@safe-global/protocol-kit";
+} from "./vendor/@safe-global/protocol-kit";
 
 /**
  * @class RSASHA256Signer

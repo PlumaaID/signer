@@ -81,3 +81,7 @@ const isValid = keypair.publicKey.verify(
 
 assert(isValid); // true
 ```
+
+## RSASHA256SafeSigner
+
+A variant of `RSASHA256Signer` that signs messages as a Safe owner, which has a different signature format with a static prefix followed by a dynamic part where the signature is stored.
