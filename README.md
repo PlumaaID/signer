@@ -85,3 +85,30 @@ assert(isValid); // true
 ## RSASHA256SafeSigner
 
 A variant of `RSASHA256Signer` that signs messages as a Safe owner, which has a different signature format with a static prefix followed by a dynamic part where the signature is stored.
+
+### Usage
+
+Creating and using a Safe signer works the same as if making a regular signer, but the signature format follows the Safe's [signature encoding](https://docs.safe.global/advanced/smart-account-signatures#encoding)
+
+```typescript
+import { RSASHA256SafeSigner } from "@plumaa/signer";
+import { pki, md } from "node-forge";
+
+// 1. Generate a new RSA keypair or load an existing one
+const keypair = pki.rsa.generateKeyPair(2048);
+
+// 2. Create a signer with the keypair
+const signer = new RSASHA256SafeSigner(keypair);
+
+// 3. Sign a message
+const message = "Hello, world!";
+const signature = await signer.signMessage({ message });
+
+// 4. Verify the signature
+const isValid = keypair.publicKey.verify(
+  signature,
+  md.create().update(message).digest().bytes()
+);
+
+assert(isValid); // true
+```

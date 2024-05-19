@@ -7,14 +7,13 @@ import {
   TypedDataDefinition,
   TypedData,
   concat,
-  Client,
   toHex,
   hashTypedData,
   hashMessage,
   isHex,
 } from "viem";
 
-import { getRSASignerFactory, with0x, factory, without0x } from "./utils";
+import { predictRSASignerAddress, with0x, without0x } from "./utils";
 import {
   EthSafeSignature,
   buildSignatureBytes,
@@ -28,26 +27,10 @@ import {
 class RSASHA256Signer implements SmartAccountSigner {
   public readonly source: SmartAccountSigner["source"] = "custom";
   public readonly type: SmartAccountSigner["type"] = "local";
+  public readonly address: SmartAccountSigner["address"];
 
-  constructor(
-    private readonly keypair: pki.rsa.KeyPair,
-    public readonly address: SmartAccountSigner["address"]
-  ) {}
-
-  static async from<TClient extends Client>(
-    keypair: pki.rsa.KeyPair,
-    viemClient: TClient
-  ): Promise<RSASHA256Signer> {
-    const contract = getRSASignerFactory(viemClient);
-    const address = await contract.read.predictDeterministicAddress([
-      {
-        exponent: with0x(keypair.privateKey.e.toString(16)),
-        modulus: with0x(keypair.privateKey.n.toString(16)),
-      },
-      factory,
-    ]);
-    const signer = new RSASHA256Signer(keypair, address);
-    return signer;
+  constructor(private readonly keypair: pki.rsa.KeyPair) {
+    this.address = predictRSASignerAddress(this.rsaPublicKey);
   }
 
   /**
@@ -101,22 +84,6 @@ class RSASHA256Signer implements SmartAccountSigner {
  * @dev Adapter of RSASHA256Signer to support signing messages encoded in the format of a Safe{Wallet}.
  */
 class RSASHA256SafeSigner extends RSASHA256Signer {
-  static async from<TClient extends Client>(
-    keypair: pki.rsa.KeyPair,
-    viemClient: TClient
-  ): Promise<RSASHA256Signer> {
-    const contract = getRSASignerFactory(viemClient);
-    const address = await contract.read.predictDeterministicAddress([
-      {
-        exponent: with0x(keypair.privateKey.e.toString(16)),
-        modulus: with0x(keypair.privateKey.n.toString(16)),
-      },
-      factory,
-    ]);
-    const signer = new RSASHA256SafeSigner(keypair, address);
-    return signer;
-  }
-
   signMessage = async ({
     message,
   }: {
