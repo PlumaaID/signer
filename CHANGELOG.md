@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.0.1
+## v1.1.0
 
 - Avoid installing unnecesary dependencies, particularly those affecting installation in React native where the Node standard library is not available.
 
