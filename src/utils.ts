@@ -1,14 +1,13 @@
 import {
   Address,
-  Client,
   Hex,
   concatHex,
   encodeAbiParameters,
-  getContract,
   getContractAddress,
   keccak256,
 } from "viem";
-import RSASignerFactoryABI from "./artifacts/RSASignerFactory";
+import RSASignerFactoryArtifact from "./artifacts/RSASignerFactory";
+import RSASignerArtifact from "./artifacts/RSASigner";
 import { pki } from "node-forge";
 
 function with0x(str: string): Hex {
@@ -27,14 +26,6 @@ function without0x(str: string): string {
 export const factory: Address = "0xd6dA52A1Ad12618c7228920003EAF39f37F5d693";
 export const implementation: Address =
   "0x832641fC286F331D01d482151217F9D381a1f0f6"; // Deployed along with the factory
-
-function getRSASignerFactory<TClient extends Client>(client: TClient) {
-  return getContract({
-    address: factory,
-    abi: RSASignerFactoryABI.abi,
-    client,
-  });
-}
 
 function predictRSASignerAddress(publicKey: pki.rsa.PublicKey) {
   const publicKeyAbi = [
@@ -67,4 +58,10 @@ function predictRSASignerAddress(publicKey: pki.rsa.PublicKey) {
   });
 }
 
-export { with0x, without0x, getRSASignerFactory, predictRSASignerAddress };
+export {
+  with0x,
+  without0x,
+  predictRSASignerAddress,
+  RSASignerFactoryArtifact,
+  RSASignerArtifact,
+};
