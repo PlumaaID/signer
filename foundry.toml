@@ -1,7 +1,7 @@
 [profile.default]
 src = "contracts/src"
 test = "contracts/test"
-scripts = "contracts/script"
+script = "contracts/script"
 out = "out"
 libs = ["node_modules", "lib"]
 via_ir = true

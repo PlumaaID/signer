@@ -23,9 +23,9 @@ function without0x(str: string): string {
 }
 
 // Universal RSASigner factory contract address
-export const factory: Address = "0xd6dA52A1Ad12618c7228920003EAF39f37F5d693";
+export const factory: Address = "0xaf27bF6704823bc70639d7DC0702B59133DBd682";
 export const implementation: Address =
-  "0x832641fC286F331D01d482151217F9D381a1f0f6"; // Deployed along with the factory
+  "0xb1bc074e0b00265113bb1e5d4ab4da20b15c755a"; // Deployed along with the factory
 
 function predictRSASignerAddress(publicKey: pki.rsa.PublicKey) {
   const publicKeyAbi = [

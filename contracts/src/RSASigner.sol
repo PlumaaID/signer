@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {RSA} from "./unreleased/RSA.sol";
+import {RSA} from "./unreleased/cryptography/RSA.sol";
 
 /// @title Plumaa - An RSA SHA256 PKCS1.5 enabler contract.
 ///
@@ -67,7 +67,7 @@ contract RSASigner is Initializable, IERC1271 {
     function isValidSignature(
         bytes32 digest,
         bytes memory signature
-    ) external view returns (bytes4) {
+    ) public view returns (bytes4) {
         return
             _verifyRSAOwner(digest, signature)
                 ? EIP1271_MAGIC_VALUE
@@ -82,7 +82,7 @@ contract RSASigner is Initializable, IERC1271 {
         bytes memory _data,
         bytes memory _signature
     ) public view virtual returns (bytes4) {
-        return this.isValidSignature(keccak256(_data), _signature);
+        return isValidSignature(keccak256(_data), _signature);
     }
 
     /// @notice Returns true if the provided signature is valid for the digest and owner's public key
@@ -103,11 +103,7 @@ contract RSASigner is Initializable, IERC1271 {
         }
 
         return
-            digest.pkcs1Sha256(
-                pkcs1Sha256Signature,
-                pubKey.exponent,
-                pubKey.modulus
-            );
+            digest.pkcs1(pkcs1Sha256Signature, pubKey.exponent, pubKey.modulus);
     }
 
     /// @notice Get EIP-7201 storage
