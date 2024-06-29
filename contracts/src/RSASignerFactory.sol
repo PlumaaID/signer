@@ -5,6 +5,7 @@ import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {RSASigner} from "./RSASigner.sol";
 
 /// @title RSASignerFactory - A factory contract to deploy RSASigner clones.
+/// @author Ernesto García
 contract RSASignerFactory {
     RSASigner private immutable _RSASignerImplementation;
 

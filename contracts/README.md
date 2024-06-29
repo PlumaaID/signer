@@ -8,4 +8,5 @@ This contract implements ERC-1271 to validate contract signatures. It's used by 
 
 | Network          | ChainID | Endorser Proxy                             |
 | ---------------- | ------- | ------------------------------------------ |
-| Arbitrum Sepolia | 421614  | 0xd6dA52A1Ad12618c7228920003EAF39f37F5d693 |
+| Arbitrum         | 42161   | 0x00fff957D5b33C6e6B568df1d5d9E017F509e6Aa |
+| Arbitrum Sepolia | 421614  | 0x00fff957D5b33C6e6B568df1d5d9E017F509e6Aa |
