@@ -38,11 +38,17 @@ contract RSASignerFactory {
         bytes32 salt
     ) public returns (address) {
         address implementation = address(_RSASignerImplementation);
-        address clone = LibClone.cloneDeterministic(
+        address clone = predictDeterministicAddress(owner, salt, address(this));
+        if (clone.code.length > 0) {
+            return clone; // Already deployed
+        }
+
+        address deployed = LibClone.cloneDeterministic(
             implementation,
             abi.encode(owner),
             salt
         );
+        assert(deployed == clone);
         emit RSASignerCreated(owner, clone);
         return clone;
     }
