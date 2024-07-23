@@ -19,14 +19,14 @@ contract RSASignerFactoryDeployScript is BaseScript {
 
     function run() public broadcast {
         address factory = createX.deployCreate2(
-            _toSalt(0xe259ea6de111de03477f94),
+            _toSalt(0x0e1fc4c02ff7f203d16ca0),
             type(RSASignerFactory).creationCode
         );
         console2.log(
             "RSASignerFactory contract deployed to %s",
             address(factory)
         );
-        assert(0x00fff957D5b33C6e6B568df1d5d9E017F509e6Aa == factory);
+        assert(0x00E2fDE3b6EAC813563BCF5aC9fBE53aa34C70aA == factory);
     }
 
     function _toSalt(bytes11 mined) internal pure returns (bytes32) {

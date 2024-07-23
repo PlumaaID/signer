@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 import {RSA} from "./unreleased/cryptography/RSA.sol";
 
 /// @title Plumaa - An RSA SHA256 PKCS1.5 enabler contract.
@@ -11,11 +11,14 @@ import {RSA} from "./unreleased/cryptography/RSA.sol";
 /// A notable example of RSA signatures in real-world applications are the government-issued digital certificates.
 /// Useful for setting this contract as the owner of a multisig, among other things.
 ///
+/// It leverages immutable arguments to hold the private key. In this way, ERC-1271 doesn't break EIP-7562 rules for
+/// storage validation. The public key is stored in the contract's runtime code.
+///
 /// NOTE: This contract uses a custom signature format with a suffix flag for normalization of keccak256 digests.
 /// See `isValidSignature`.
 ///
 /// @author Ernesto García
-contract RSASigner is Initializable, IERC1271 {
+contract RSASigner is IERC1271 {
     using RSA for bytes32;
 
     // bytes4(keccak256("isValidSignature(bytes,bytes)")
@@ -26,28 +29,9 @@ contract RSASigner is Initializable, IERC1271 {
         bytes modulus;
     }
 
-    struct RSASignerStorage {
-        PublicKey publicKey;
-    }
-
-    // keccak256(abi.encode(uint256(keccak256("plumaa.storage.RSAOwnerManager")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 internal constant RSA_SIGNER_STORAGE_LOCATION =
-        0xb52b4718faac153eeb923f05896f8d2ef89fd6e491bd8ca204d7a6a13bb7b500;
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
-    /// @notice Initializes the contract with an RSA owner
-    /// @param owner The RSA public key of the owner
-    function initialize(PublicKey calldata owner) external initializer {
-        _getRSASignerStorage().publicKey = owner;
-    }
-
     /// @notice Returns the signer's public key
     function publicKey() public view returns (PublicKey memory) {
-        return _getRSASignerStorage().publicKey;
+        return abi.decode(LibClone.argsOnClone(address(this)), (PublicKey));
     }
 
     /// @notice Checks if the provided signature is valid for the sha256 hash.
@@ -106,17 +90,6 @@ contract RSASigner is Initializable, IERC1271 {
 
         return
             digest.pkcs1(pkcs1Sha256Signature, pubKey.exponent, pubKey.modulus);
-    }
-
-    /// @notice Get EIP-7201 storage
-    function _getRSASignerStorage()
-        private
-        pure
-        returns (RSASignerStorage storage $)
-    {
-        assembly ("memory-safe") {
-            $.slot := RSA_SIGNER_STORAGE_LOCATION
-        }
     }
 
     function _splitSignature(

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {LibClone} from "solady/utils/LibClone.sol";
 import {RSASigner} from "./RSASigner.sol";
 
-/// @title RSASignerFactory - A factory contract to deploy RSASigner clones.
+/// @title RSASignerFactory - A factory contract to deploy RSASigner clones with immutable public key.
 /// @author Ernesto García
 contract RSASignerFactory {
     RSASigner private immutable _RSASignerImplementation;
@@ -19,32 +19,39 @@ contract RSASignerFactory {
     /// @notice Predicts the address of an RSASigner clone using the public key as salt.
     function predictDeterministicAddress(
         RSASigner.PublicKey memory owner,
+        bytes32 salt,
         address deployer
     ) public view returns (address) {
+        address implementation = address(_RSASignerImplementation);
         return
-            Clones.predictDeterministicAddress(
-                address(_RSASignerImplementation),
-                _salt(owner),
+            LibClone.predictDeterministicAddress(
+                implementation,
+                abi.encode(owner),
+                salt,
                 deployer
             );
     }
 
-    /// @notice Creates a new RSASigner clone using the public key as salt.
+    /// @notice Idempotently creates a new RSASigner clone using the public key as salt.
     function createDeterministic(
-        RSASigner.PublicKey memory owner
+        RSASigner.PublicKey memory owner,
+        bytes32 salt
     ) public returns (address) {
-        address clone = Clones.cloneDeterministic(
-            address(_RSASignerImplementation),
-            _salt(owner)
+        address implementation = address(_RSASignerImplementation);
+        address clone = LibClone.cloneDeterministic(
+            implementation,
+            abi.encode(owner),
+            salt
         );
-        RSASigner(clone).initialize(owner);
         emit RSASignerCreated(owner, clone);
         return clone;
     }
 
-    function _salt(
+    function _toBytes(
         RSASigner.PublicKey memory owner
-    ) private pure returns (bytes32) {
-        return keccak256(abi.encode(owner));
+    ) internal pure returns (bytes memory result) {
+        assembly ("memory-safe") {
+            result := owner
+        }
     }
 }

@@ -2,33 +2,28 @@
 pragma solidity ^0.8.24;
 
 import {BaseTest} from "./Base.t.sol";
-import {RSASignerMock} from "./mocks/RSASigner.m.sol";
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import {RSASigner} from "~/RSASigner.sol";
 
 contract RSASignerTest is BaseTest {
-    RSASignerMock signer;
+    RSASigner signer;
 
     bytes4 internal constant EIP1271_MAGIC_VALUE = 0x20c13b0b;
 
-    /// @notice it should have initializers disabled because is dangerous to leave the implementation uninitialized
-    function test_GivenTheImplementation() external {
-        RSASignerMock implementation = new RSASignerMock();
-        assertTrue(implementation.getInitializedVersion() == type(uint64).max);
-    }
-
     modifier whenCreatingWithTheFactory(
-        RSASignerMock.PublicKey memory ownerPublicKey
+        RSASigner.PublicKey memory ownerPublicKey,
+        bytes32 salt
     ) {
-        address clone = factory.createDeterministic(ownerPublicKey);
-        signer = RSASignerMock(clone);
+        address clone = factory.createDeterministic(ownerPublicKey, salt);
+        signer = RSASigner(clone);
         _;
     }
 
-    /// @notice it sets the RSA public key owner because it is just initialized
+    /// @notice it sets the RSA public key owner because it is just created
     function test_GivenANewRSASignerCreated(
-        RSASignerMock.PublicKey memory ownerPublicKey
-    ) external whenCreatingWithTheFactory(ownerPublicKey) {
-        RSASignerMock.PublicKey memory setPublicKey = signer.publicKey();
+        RSASigner.PublicKey memory ownerPublicKey,
+        bytes32 salt
+    ) external whenCreatingWithTheFactory(ownerPublicKey, salt) {
+        RSASigner.PublicKey memory setPublicKey = signer.publicKey();
 
         assertEq(setPublicKey.exponent, ownerPublicKey.exponent);
         assertEq(setPublicKey.modulus, ownerPublicKey.modulus);
@@ -37,10 +32,11 @@ contract RSASignerTest is BaseTest {
     bytes32 sha256Digest;
 
     modifier whenValidatingASha256DigestedMessageWithIsValidSignature(
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     ) {
-        address clone = factory.createDeterministic(owner.publicKey());
-        signer = RSASignerMock(clone);
+        address clone = factory.createDeterministic(owner.publicKey(), salt);
+        signer = RSASigner(clone);
         sha256Digest = sha256(message);
         _;
     }
@@ -48,10 +44,11 @@ contract RSASignerTest is BaseTest {
     /// @notice it returns `bytes4(0)` because the sha256 digest signature is invalid
     function test_GivenAnInvalidSha256Signature(
         bytes memory message,
-        bytes memory signature
+        bytes memory signature,
+        bytes32 salt
     )
         external
-        whenValidatingASha256DigestedMessageWithIsValidSignature(message)
+        whenValidatingASha256DigestedMessageWithIsValidSignature(message, salt)
     {
         bytes4 result = signer.isValidSignature(sha256Digest, signature);
         assertEq(result, bytes4(0));
@@ -59,10 +56,11 @@ contract RSASignerTest is BaseTest {
 
     /// @notice it returns `bytes4(0)` because the owner did not sign the sha256 digest
     function test_GivenASha256DigestAndASignatureOfAnotherPublicKey(
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     )
         external
-        whenValidatingASha256DigestedMessageWithIsValidSignature(message)
+        whenValidatingASha256DigestedMessageWithIsValidSignature(message, salt)
     {
         bytes memory pcks1Sha256Signature = other.sign(message);
         bytes4 result = signer.isValidSignature(
@@ -74,10 +72,11 @@ contract RSASignerTest is BaseTest {
 
     /// @notice it returns `isValidSignature.selector` because the owner signed the sha256 digest
     function test_GivenASha256DigestAndASignatureOfTheOwner(
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     )
         external
-        whenValidatingASha256DigestedMessageWithIsValidSignature(message)
+        whenValidatingASha256DigestedMessageWithIsValidSignature(message, salt)
     {
         bytes memory pcks1Sha256Signature = owner.sign(message);
         bytes4 result = signer.isValidSignature(
@@ -90,10 +89,11 @@ contract RSASignerTest is BaseTest {
     bytes32 keccak256Digest;
 
     modifier whenValidatingANormalizedKeccak256DigestedMessageWithIsValidSignature(
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     ) {
-        address clone = factory.createDeterministic(owner.publicKey());
-        signer = RSASignerMock(clone);
+        address clone = factory.createDeterministic(owner.publicKey(), salt);
+        signer = RSASigner(clone);
         keccak256Digest = keccak256(message);
         _;
     }
@@ -101,11 +101,13 @@ contract RSASignerTest is BaseTest {
     /// @notice it returns `bytes4(0)` because the normalized keccak256 digest signature invalid
     function test_GivenAnInvalidNormalizedKeccak256Signature(
         bytes memory signature,
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     )
         external
         whenValidatingANormalizedKeccak256DigestedMessageWithIsValidSignature(
-            message
+            message,
+            salt
         )
     {
         bytes4 result = signer.isValidSignature(keccak256Digest, signature);
@@ -114,11 +116,13 @@ contract RSASignerTest is BaseTest {
 
     /// @notice it returns `bytes4(0)` because the owner did not sign the normalized keccak256 digest
     function test_GivenANormalizedKeccak256DigestAndASignatureOfAnotherPublicKey(
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     )
         external
         whenValidatingANormalizedKeccak256DigestedMessageWithIsValidSignature(
-            message
+            message,
+            salt
         )
     {
         bytes memory pcks1Sha256Signature = other.sign(
@@ -133,11 +137,13 @@ contract RSASignerTest is BaseTest {
 
     /// @notice it returns `isValidSignature.selector` because the owner signed the normalized keccak256 digest
     function test_GivenANormalizedKeccak256DigestAndASignatureOfTheOwner(
-        bytes memory message
+        bytes memory message,
+        bytes32 salt
     )
         external
         whenValidatingANormalizedKeccak256DigestedMessageWithIsValidSignature(
-            message
+            message,
+            salt
         )
     {
         bytes memory pcks1Sha256Signature = owner.sign(

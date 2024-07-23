@@ -1,11 +1,8 @@
 RSASignerTest
-├── given the implementation
-│   └── it should have initializers disabled
-│       └── because is dangerous to leave the implementation uninitialized
 ├── when creating with the factory
 │   └── given a new RSA signer created
 │       └── it sets the RSA public key owner
-│            └── because it is just initialized 
+│            └── because it is just created 
 ├── when validating a sha256 digested message with isValidSignature
 │   ├── given an invalid sha256 signature
 │   │   └── it returns `bytes4(0)`
