@@ -5,6 +5,8 @@ import {
   encodeAbiParameters,
   getContractAddress,
   keccak256,
+  size,
+  toHex,
 } from "viem";
 import RSASignerFactoryArtifact from "./artifacts/RSASignerFactory";
 import RSASignerArtifact from "./artifacts/RSASigner";
@@ -23,11 +25,14 @@ function without0x(str: string): string {
 }
 
 // Universal RSASigner factory contract address
-export const factory: Address = "0x00fff957d5b33c6e6b568df1d5d9e017f509e6aa";
+export const factory: Address = "0x0046CBAdF1ac31Ccc4d94CF0815Ad0FA1587a7Aa";
 export const implementation: Address =
-  "0xa6251a85d5c24e3c3f28a2e8f4ae3fbd11cdbbc7"; // Deployed along with the factory
+  "0xd0038192b98ce2c7fd13e099e72ee07d78dab7f7"; // Deployed along with the factory
 
-function predictRSASignerAddress(publicKey: pki.rsa.PublicKey) {
+function predictRSASignerAddress(
+  publicKey: pki.rsa.PublicKey,
+  salt?: Hex
+): Address {
   const publicKeyAbi = [
     {
       type: "tuple",
@@ -37,24 +42,86 @@ function predictRSASignerAddress(publicKey: pki.rsa.PublicKey) {
       ],
     },
   ] as const;
+
+  const args = encodeAbiParameters(publicKeyAbi, [
+    {
+      exponent: with0x(publicKey.e.toString(16)),
+      modulus: with0x(publicKey.n.toString(16)),
+    },
+  ]);
+
+  const runSize = 45 + size(args);
+  const offset = 0x0a; // 10 bytes
+
   return getContractAddress({
     // According to EIP-1167
     bytecode: concatHex([
-      "0x3d602d80600a3d3981f3363d3d373d3d3d363d73",
+      // ---------------------------------------------------------------------------+
+      // CREATION (10 bytes)                                                        |
+      // ---------------------------------------------------------------------------|
+      // Opcode     | Mnemonic          | Stack     | Memory                        |
+      // ---------------------------------------------------------------------------|
+      // 61 runSize | PUSH2 runSize     | r         |                               |
+      "0x61",
+      toHex(runSize),
+      // 3d         | RETURNDATASIZE    | 0 r       |                               |
+      // 81         | DUP2              | r 0 r     |                               |
+      // 60 offset  | PUSH1 offset      | o r 0 r   |                               |
+      "0x3d8160",
+      toHex(offset),
+      // 3d         | RETURNDATASIZE    | 0 o r 0 r |                               |
+      // 39         | CODECOPY          | 0 r       | [0..runSize): runtime code    |
+      // f3         | RETURN            |           | [0..runSize): runtime code    |
+      // ---------------------------------------------------------------------------|
+      "0x3d39f3",
+      // ---------------------------------------------------------------------------|
+      // RUNTIME (45 bytes + extraLength)                                           |
+      // ---------------------------------------------------------------------------|
+      // Opcode   | Mnemonic       | Stack                  | Memory                |
+      // ---------------------------------------------------------------------------|
+      //                                                                            |
+      // ::: copy calldata to memory :::::::::::::::::::::::::::::::::::::::::::::: |
+      // 36       | CALLDATASIZE   | cds                    |                       |
+      // 3d       | RETURNDATASIZE | 0 cds                  |                       |
+      // 3d       | RETURNDATASIZE | 0 0 cds                |                       |
+      // 37       | CALLDATACOPY   |                        | [0..cds): calldata    |
+      //                                                                            |
+      // ::: delegate call to the implementation contract ::::::::::::::::::::::::: |
+      // 3d       | RETURNDATASIZE | 0                      | [0..cds): calldata    |
+      // 3d       | RETURNDATASIZE | 0 0                    | [0..cds): calldata    |
+      // 3d       | RETURNDATASIZE | 0 0 0                  | [0..cds): calldata    |
+      // 36       | CALLDATASIZE   | cds 0 0 0              | [0..cds): calldata    |
+      // 3d       | RETURNDATASIZE | 0 cds 0 0 0 0          | [0..cds): calldata    |
+      // 73 addr  | PUSH20 addr    | addr 0 cds 0 0 0 0     | [0..cds): calldata    |
+      "0x363d3d373d3d3673",
       implementation,
+      // 5a       | GAS            | gas addr 0 cds 0 0 0 0 | [0..cds): calldata    |
+      // f4       | DELEGATECALL   | success 0 0            | [0..cds): calldata    |
+      //                                                                            |
+      // ::: copy return data to memory ::::::::::::::::::::::::::::::::::::::::::: |
+      // 3d       | RETURNDATASIZE | rds success 0          | [0..cds): calldata    |
+      // 82       | DUP3           | 0 rds success 0         | [0..cds): calldata   |
+      // 80       | DUP1           | 0 0 rds success 0      | [0..cds): calldata    |
+      // 3e       | RETURNDATACOPY | success 0              | [0..rds): returndata  |
+      // 90       | SWAP1          | 0 success              | [0..rds): returndata  |
+      // 3d       | RETURNDATASIZE | rds 0 success          | [0..rds): returndata  |
+      // 91       | SWAP2          | success 0 rds          | [0..rds): returndata  |
+      //                                                                            |
+      // 60 0x2b  | PUSH1 0x2b     | 0x2b success 0 rds     | [0..rds): returndata  |
+      // 57       | JUMPI          | 0 rds                  | [0..rds): returndata  |
+      //                                                                            |
+      // ::: revert ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: |
+      // fd       | REVERT         |                        | [0..rds): returndata  |
+      //                                                                            |
+      // ::: return ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::: |
+      // 5b       | JUMPDEST       | 0 rds                  | [0..rds): returndata  |
+      // f3       | RETURN         |                        | [0..rds): returndata  |
+      // ---------------------------------------------------------------------------+
       "0x5af43d82803e903d91602b57fd5bf3",
     ]),
     from: factory,
     opcode: "CREATE2",
-    salt: keccak256(
-      encodeAbiParameters(publicKeyAbi, [
-        {
-          exponent: with0x(publicKey.e.toString(16)),
-          modulus: with0x(publicKey.n.toString(16)),
-        },
-      ]),
-      "bytes"
-    ),
+    salt: salt ?? keccak256(toHex("plumaa.id")),
   });
 }
 
