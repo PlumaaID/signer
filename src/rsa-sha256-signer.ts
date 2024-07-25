@@ -58,7 +58,7 @@ class RSASHA256Signer implements SmartAccountSigner {
         : isHex(message.raw)
         ? message.raw
         : toHex(message.raw);
-    return this.sign(hashMessage(raw));
+    return this.sign({ hash: hashMessage(raw) });
   };
 
   signTypedData = async <
@@ -67,13 +67,13 @@ class RSASHA256Signer implements SmartAccountSigner {
   >(
     typedDataDefinition: TypedDataDefinition<typedData, primaryType>
   ): Promise<Hash> => {
-    return this.sign(hashTypedData(typedDataDefinition));
+    return this.sign({ hash: hashTypedData(typedDataDefinition) });
   };
 
-  protected async sign(keccak256Digest: Hash): Promise<Hex> {
+  async sign({ hash }: { hash: Hash }): Promise<Hex> {
     const digest = md.sha256
       .create()
-      .update(util.hexToBytes(without0x(keccak256Digest)), "raw");
+      .update(util.hexToBytes(without0x(hash)), "raw");
     const signature = this.keypair.privateKey.sign(digest);
     // The format follows the normalization model of the RSASigner.sol contract
     return concat([with0x(util.bytesToHex(signature)), "0x01"]);
@@ -96,7 +96,7 @@ class RSASHA256SafeSigner extends RSASHA256Signer {
         ? message.raw
         : toHex(message.raw);
 
-    return this.toSafeEthSignature(await this.sign(hashMessage(raw)));
+    return this.toSafeEthSignature(await this.sign({ hash: hashMessage(raw) }));
   };
 
   signTypedData = async <
@@ -105,7 +105,9 @@ class RSASHA256SafeSigner extends RSASHA256Signer {
   >(
     typedDataDefinition: TypedDataDefinition<typedData, primaryType>
   ): Promise<Hex> => {
-    const signature = await this.sign(hashTypedData(typedDataDefinition));
+    const signature = await this.sign({
+      hash: hashTypedData(typedDataDefinition),
+    });
 
     return this.toSafeEthSignature(signature);
   };
