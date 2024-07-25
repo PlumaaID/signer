@@ -118,6 +118,7 @@ function predictRSASignerAddress(
       // f3       | RETURN         |                        | [0..rds): returndata  |
       // ---------------------------------------------------------------------------+
       "0x5af43d82803e903d91602b57fd5bf3",
+      args,
     ]),
     from: factory,
     opcode: "CREATE2",
