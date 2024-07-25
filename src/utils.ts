@@ -54,7 +54,6 @@ function predictRSASignerAddress(
   const offset = 0x0a; // 10 bytes
 
   return getContractAddress({
-    // According to EIP-1167
     bytecode: concatHex([
       // ---------------------------------------------------------------------------+
       // CREATION (10 bytes)                                                        |
@@ -63,12 +62,14 @@ function predictRSASignerAddress(
       // ---------------------------------------------------------------------------|
       // 61 runSize | PUSH2 runSize     | r         |                               |
       "0x61",
-      toHex(runSize),
+      toHex(runSize, {
+        size: 2,
+      }),
       // 3d         | RETURNDATASIZE    | 0 r       |                               |
       // 81         | DUP2              | r 0 r     |                               |
       // 60 offset  | PUSH1 offset      | o r 0 r   |                               |
       "0x3d8160",
-      toHex(offset),
+      toHex(offset, { size: 1 }),
       // 3d         | RETURNDATASIZE    | 0 o r 0 r |                               |
       // 39         | CODECOPY          | 0 r       | [0..runSize): runtime code    |
       // f3         | RETURN            |           | [0..runSize): runtime code    |
@@ -93,7 +94,7 @@ function predictRSASignerAddress(
       // 36       | CALLDATASIZE   | cds 0 0 0              | [0..cds): calldata    |
       // 3d       | RETURNDATASIZE | 0 cds 0 0 0 0          | [0..cds): calldata    |
       // 73 addr  | PUSH20 addr    | addr 0 cds 0 0 0 0     | [0..cds): calldata    |
-      "0x363d3d373d3d3673",
+      "0x363d3d373d3d3d363d73",
       implementation,
       // 5a       | GAS            | gas addr 0 cds 0 0 0 0 | [0..cds): calldata    |
       // f4       | DELEGATECALL   | success 0 0            | [0..cds): calldata    |
