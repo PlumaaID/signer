@@ -29,8 +29,8 @@ class RSASHA256Signer implements SmartAccountSigner {
   public readonly type: SmartAccountSigner["type"] = "local";
   public readonly address: SmartAccountSigner["address"];
 
-  constructor(private readonly keypair: pki.rsa.KeyPair) {
-    this.address = predictRSASignerAddress(this.rsaPublicKey);
+  constructor(private readonly keypair: pki.rsa.KeyPair, salt?: Hex) {
+    this.address = predictRSASignerAddress(this.rsaPublicKey, salt);
   }
 
   /**
