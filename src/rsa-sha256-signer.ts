@@ -1,4 +1,3 @@
-import { SmartAccountSigner } from "permissionless/_types/accounts";
 import { md, pki, util } from "node-forge";
 import {
   Hex,
@@ -11,6 +10,9 @@ import {
   hashTypedData,
   hashMessage,
   isHex,
+  LocalAccount,
+  SerializeTransactionFn,
+  TransactionSerializable,
 } from "viem";
 
 import { predictRSASignerAddress, with0x, without0x } from "./utils";
@@ -21,13 +23,13 @@ import {
 
 /**
  * @class RSASHA256Signer
- * @implements {SmartAccountSigner}
+ * @implements {LocalAccount}
  * @description A smart account signer that uses RSA keys with SHA256 hashing algorithm.
  */
-class RSASHA256Signer implements SmartAccountSigner {
-  public readonly source: SmartAccountSigner["source"] = "custom";
-  public readonly type: SmartAccountSigner["type"] = "local";
-  public readonly address: SmartAccountSigner["address"];
+class RSASHA256Signer implements LocalAccount {
+  public readonly source: LocalAccount["source"] = "custom";
+  public readonly type: LocalAccount["type"] = "local";
+  public readonly address: LocalAccount["address"];
 
   constructor(private readonly keypair: pki.rsa.KeyPair, salt?: Hex) {
     this.address = predictRSASignerAddress(this.rsaPublicKey, salt);
@@ -36,7 +38,7 @@ class RSASHA256Signer implements SmartAccountSigner {
   /**
    * @abstract The public key is the concatenation of the exponent and modulus of the RSA key.
    */
-  get publicKey(): SmartAccountSigner["publicKey"] {
+  get publicKey(): LocalAccount["publicKey"] {
     return concat([
       with0x(this.rsaPublicKey.e.toString(16)),
       with0x(this.rsaPublicKey.n.toString(16)),
@@ -46,6 +48,19 @@ class RSASHA256Signer implements SmartAccountSigner {
   get rsaPublicKey(): pki.rsa.PublicKey {
     return this.keypair.publicKey;
   }
+
+  signTransaction = <
+    serializer extends SerializeTransactionFn<TransactionSerializable> = SerializeTransactionFn<TransactionSerializable>,
+    transaction extends Parameters<serializer>[0] = Parameters<serializer>[0]
+  >(
+    transaction: transaction,
+    options?: { serializer?: serializer | undefined } | undefined
+  ) => {
+    // Silence the linter
+    transaction;
+    options;
+    throw new Error("Method not implemented.");
+  };
 
   signMessage = async ({
     message,
