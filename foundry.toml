@@ -1,4 +1,6 @@
 [profile.default]
+solc_version = "0.8.26"
+evm_version = "paris"
 src = "contracts/src"
 test = "contracts/test"
 script = "contracts/script"
@@ -16,9 +18,12 @@ verbosity = 4
 [etherscan]
 arbitrum = { key = "${API_KEY_ARBISCAN}" }
 arbitrum_sepolia = { key = "${API_KEY_ARBISCAN}" }
+base_sepolia = { key = "${API_KEY_BASESCAN}" }
 
 [rpc_endpoints]
 arbitrum = "https://arbitrum-mainnet.infura.io/v3/${API_KEY_INFURA}"
 arbitrum_sepolia = "https://arbitrum-sepolia.infura.io/v3/${API_KEY_INFURA}"
+base = "https://base-mainnet.infura.io/v3/${API_KEY_INFURA}"
+base_sepolia = "https://base-sepolia.infura.io/v3/${API_KEY_INFURA}"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
